@@ -55,7 +55,7 @@ class QMixer(nn.Module):
 
 
 class RegressorNetwork(nn.Module):
-    """Extra regressor to predict waiting time (optional enhancement)"""
+    
     def __init__(self, state_dim, hidden_dim=64):
         super().__init__()
         self.fc1 = nn.Linear(state_dim, hidden_dim)
