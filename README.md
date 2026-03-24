@@ -24,7 +24,7 @@ SIH
 ```
 
 ## Installation
-To set up the project, clone the repository and install the required dependencies listed in `requirements.txt`.
+To set up the project, clone the repository and install the required dependencies listed in `requirements.txt`
 
 ```bash
 pip install -r requirements.txt
