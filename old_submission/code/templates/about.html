@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About Us - Smart Traffic</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f5;
+    }
+
+    /* Unified Navbar */
+    header {
+      background: #222;
+      padding: 15px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+    header h2 {
+      color: #fff;
+      margin: 0;
+      font-size: 20px;
+    }
+    nav ul {
+      list-style: none;
+      display: flex;
+      margin: 0;
+      padding: 0;
+      gap: 12px; /* reduced gap between tabs */
+      align-items: center;
+    }
+    nav ul li a {
+      text-decoration: none;
+      color: #fff;
+      font-weight: bold;
+      transition: color 0.3s ease, background-color 0.3s ease;
+      padding: 6px 10px; /* slightly reduced padding */
+      border-radius: 6px;
+      display: inline-block;
+      line-height: 1.5;
+    }
+    nav ul li a:hover,
+    nav ul li a.active {
+      color: #6dd5ed;
+      background-color: rgba(109, 213, 237, 0.15);
+    }
+
+    .login-btn {
+      background: #6dd5ed;
+      color: #000 !important;
+      font-weight: bold;
+      border-radius: 6px;
+      padding: 6px 12px;
+      transition: 0.3s;
+    }
+    .login-btn:hover {
+      background: #2193b0;
+      color: #fff !important;
+    }
+
+
+    /* Hero Section */
+    .about-hero {
+      background: linear-gradient(90deg, #2193b0, #6dd5ed);
+      color: white;
+      text-align: center;
+      padding: 60px 40px;
+    }
+    .about-hero h1 {
+      font-size: 60px;
+      margin-bottom: 20px;
+    }
+
+    .about-hero p {
+        font-size: 20px;
+        padding-left: 30px;
+        padding-right: 30px;
+        font-weight: 500;
+    }
+
+    /* Grid Section */
+    .about-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      padding: 40px;
+    }
+    .card {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease;
+    }
+    .card:hover {
+      transform: translateY(-8px);
+    }
+
+    .card h2 {
+        font-size: 30px;
+    }
+    .card p {
+        font-size: 20px;
+    }
+
+    /* Footer */
+    footer {
+      background: #222;
+      color: white;
+      text-align: center;
+      padding: 15px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>Smart Traffic Management System</h2>
+    <nav>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="about" class="active">About Us</a></li>
+        <li><a href="features">Features</a></li>
+        <li><a href="dashboard">Dashboard</a></li>
+        <li><a href="simulation">Simulation</a></li>
+        <li><a href="contact">Contact</a></li>
+        <li><a class="login-btn">👮 {{ username }} </a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <section class="about-hero">
+    <h1>About Our Project</h1>
+    <br>
+    <p>We are pioneering the future of urban mobility with an AI-driven traffic management system designed to optimize signal timings and reduce congestion in cities. Leveraging real-time data from cameras and IoT sensors, our platform uses cutting-edge computer vision and reinforcement learning technologies to predict bottlenecks and adapt traffic flow dynamically. Our mission is to shorten commute times, enhance road safety, and provide traffic authorities with powerful tools to monitor and control signals effectively. Committed to innovation and sustainability, we strive to create smarter, smoother, and safer roads for everyone.</p>
+  </section>
+
+  <section class="about-grid">
+    <div class="card">
+      <h2>Our Mission</h2>
+      <p>To develop an AI-driven traffic management system that leverages real-time data from cameras and IoT sensors to optimize traffic signals, reduce congestion, and improve the daily commuting experience in urban areas.</p>
+    </div>
+
+    <div class="card">
+      <h2>Our Vision</h2>
+      <p>To build smarter, safer, and more sustainable cities by transforming traditional traffic control into an intelligent, adaptive ecosystem that minimizes travel time, lowers emissions, and enhances quality of life for all citizens.</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>© 2025 Smart Traffic Management System</p>
+  </footer>
+</body>
+</html>
