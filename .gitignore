@@ -1,1 +1,6 @@
 venv/*
+src/frontend/node_modules/*
+src/frontend/dist/*
+src/frontend/.vite/*
+src/frontend/.DS_Store
+src/frontend/.env

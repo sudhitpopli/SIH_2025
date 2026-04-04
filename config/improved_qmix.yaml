@@ -1,0 +1,40 @@
+# Improved QMIX (v2) Configuration
+# Tuned for Connaught Place radial intersections on RTX 3050
+env: sumo
+
+env_args:
+  map_path: "maps/connaught_place.net.xml"
+  cfg_path: "maps/connaught_place.sumocfg"
+  step_length: 1.0
+  decision_interval: 10        # Radial intersections need longer decision windows
+  episode_limit: 720
+  use_gui: False
+  yellow_duration: 3            # IRC-standard yellow phase (seconds)
+  max_lanes: 8                  # Connaught Place radial: up to 8 approach lanes
+
+control_tls: True
+
+# Architecture: GRU + MaxPressure
+use_rnn: True
+reward_type: "max_pressure"
+
+# Hyperparameters — tuned for radial topology
+rnn_hidden_dim: 128             # Larger hidden for complex radial patterns
+mixer_hidden_dim: 64            # Deeper mixer for multi-agent coordination
+lr: 0.0005                     # Slightly higher LR for faster convergence
+gamma: 0.99
+batch_size: 16                  # Episode chunks per training step
+ep_buffer_size: 300             # Max episodes in replay (300 * 720 steps = plenty)
+chunk_len: 72                   # ~720/10 = 72 decision points per episode (full coverage)
+n_episodes: 2000                # More episodes for complex topology
+target_update_interval: 5       # Frequent target updates for stability
+print_interval: 10
+
+# Exploration — slower decay for complex action space
+epsilon_start: 1.0
+epsilon_min: 0.05
+epsilon_decay: 0.998            # Slower decay: ~1150 episodes to reach 0.1
+
+# Logging
+save_dir: "./models/v2"
+log_stats: True
