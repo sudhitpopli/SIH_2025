@@ -1,6 +1,0 @@
-# This file is used internally by FFMPEG.
-file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/RadialGridlock/3544663784_1401491405_223132457.mp4'
-file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/RadialGridlock/260329756_2546432028_3305166085.mp4'
-file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/RadialGridlock/260329756_552487459_2336072424.mp4'
-file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/RadialGridlock/260329756_2050393215_1326882549.mp4'
-file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/RadialGridlock/260329756_2872842549_1728340031.mp4'

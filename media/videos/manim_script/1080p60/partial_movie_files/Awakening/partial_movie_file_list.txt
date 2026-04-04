@@ -1,8 +1,0 @@
-# This file is used internally by FFMPEG.
-file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/Awakening/3544663784_3822934081_469057191.mp4'
-file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/Awakening/260329756_2636973162_3756711479.mp4'
-file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/Awakening/260329756_2870674757_2315620759.mp4'
-file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/Awakening/260329756_746645120_4273568821.mp4'
-file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/Awakening/260329756_1894750761_1100993583.mp4'
-file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/Awakening/260329756_806992675_4005649636.mp4'
-file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/Awakening/260329756_1432596116_1707874753.mp4'

@@ -34,7 +34,7 @@ class DashboardErrorBoundary extends Component<{children: ReactNode}, {hasError:
   }
 }
 
-const TABS = ['Home', 'About Us', 'Features', 'Dashboard', 'Simulation', 'Contact'];
+const TABS = ['Home', 'About Us', 'Features', 'Dashboard', 'Contact'];
 
 // Reusable Theme Colors
 const COLORS = {
@@ -142,7 +142,7 @@ export default function TrafficDashboard() {
 
         {activeTab === 'Home' ? (
           <Home onNavigate={setActiveTab} />
-        ) : activeTab === 'Dashboard' || activeTab === 'Simulation' ? (
+        ) : activeTab === 'Dashboard' ? (
           <>
             <div className="flex gap-4 mb-10">
               <button 

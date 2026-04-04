@@ -1,1 +1,0 @@
-{'Default SUMO Control': [-1.68, 41.64, 1378.0, 720.0, 74.18, -1210.22], 'Random Action Baseline': [-2.5, 307.16, 1381.33, 720.0, 76.59, -1796.81], 'QMIX AI Control': [-1.52, 151.88, 1385.69, 720.0, 76.72, -1094.36], 'Best Method': 'QMIX AI Control', 'Avg Vehicles': 1381.67, 'Avg Wait Time': 166.89}
