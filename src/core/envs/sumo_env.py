@@ -4,7 +4,7 @@ import numpy as np
 from core.envs.multiagentenv import MultiAgentEnv
 
 class SUMOEnv(MultiAgentEnv):
-    def __init__(self, args, control_tls=True):
+    def __init__(self, args, control_tls=True, port=None, label="default"):
         """
         Initializes the SUMO Environment wrapper. 
         This class bridges PyTorch/RL logic with the SUMO TraCI C++ backend.
@@ -12,6 +12,9 @@ class SUMOEnv(MultiAgentEnv):
         super().__init__()
         self.control_tls = control_tls
         self.args = args
+        self.port = port
+        self.label = label
+        self.sumo = None
         self.net_file = args.env_args.get("map_path", "./maps/connaught_place.net.xml")
         self.cfg_file = args.env_args.get("cfg_path", "./maps/connaught_place.sumocfg")
         self.step_length = args.env_args.get("step_length", 1.0)
@@ -53,12 +56,14 @@ class SUMOEnv(MultiAgentEnv):
         self._initialize_env_info()
 
     def _start_sumo(self):
-        """Start SUMO simulation with proper error handling"""
+        """Start SUMO simulation with proper error handling and labeling for multi-instance support."""
+        # Clean up existing labeling if this is a restart
         try:
-            if traci.isLoaded():
-                traci.close()
+            if self.sumo:
+                self.sumo.close()
         except:
             pass
+        
         
         # Build SUMO command
         binary = "sumo-gui" if self.use_gui else "sumo"
@@ -71,9 +76,13 @@ class SUMOEnv(MultiAgentEnv):
         ]
         
         try:
-            traci.start(sumo_cmd)
+            # [MECHANISM: MULTI-INSTANCE TRACI]
+            # To run 2 simulations side-by-side, we must specify a unique Port and Label.
+            # traci.start returns a 'Connection' object which acts as our private tunnel 
+            # to this specific SUMO instance. 
+            self.sumo = traci.start(sumo_cmd, port=self.port, label=self.label)
         except Exception as e:
-            print(f"Error starting SUMO: {e}")
+            print(f"Error starting SUMO (Port {self.port}, Label {self.label}): {e}")
             raise
 
     def _initialize_env_info(self):
@@ -82,7 +91,7 @@ class SUMOEnv(MultiAgentEnv):
         to dynamically construct the Action-Space geometry for the neural network.
         """
         try:
-            self.tls_ids = traci.trafficlight.getIDList()
+            self.tls_ids = self.sumo.trafficlight.getIDList()
             self.n_agents = len(self.tls_ids)
 
             if self.n_agents == 0:
@@ -99,8 +108,8 @@ class SUMOEnv(MultiAgentEnv):
         # An intersection can have multiple logics/programs. The agent's neural network acts by choosing 
         # an integer (Action 0, Action 1...). We ask SUMO exactly how many phases the CURRENT active program 
         # has, so the agent's action space perfectly maps to the physical intersections.
-                        logics = traci.trafficlight.getCompleteRedYellowGreenDefinition(tls)
-                        curr_prog = traci.trafficlight.getProgram(tls)
+                        logics = self.sumo.trafficlight.getCompleteRedYellowGreenDefinition(tls)
+                        curr_prog = self.sumo.trafficlight.getProgram(tls)
                         active_logic = next((l for l in logics if l.programID == curr_prog), logics[0])
                         self.tls_action_counts[tls] = len(active_logic.phases)
                         self.tls_definitions[tls] = active_logic
@@ -140,7 +149,7 @@ class SUMOEnv(MultiAgentEnv):
             # ---- Bug 6 fix: initialize phase tracking ----
             for tls in self.tls_ids:
                 try:
-                    self.current_phases[tls] = traci.trafficlight.getPhase(tls)
+                    self.current_phases[tls] = self.sumo.trafficlight.getPhase(tls)
                 except:
                     self.current_phases[tls] = 0
                 self._yellow_countdown[tls] = 0
@@ -168,8 +177,8 @@ class SUMOEnv(MultiAgentEnv):
 
         # Always close and restart — no backwards stepping!
         try:
-            if traci.isLoaded():
-                traci.close()
+            if self.sumo.isLoaded():
+                self.sumo.close()
         except:
             pass
 
@@ -201,7 +210,7 @@ class SUMOEnv(MultiAgentEnv):
         """Advances the simulation by 5 seconds, enacting PyTorch actions and mapping physics."""
         try:
             # Check if simulation is still running
-            if not traci.isLoaded():
+            if not self.sumo.isLoaded():
                 return self._get_terminal_state()
             
             if self.control_tls and actions is not None and self.tls_ids:
@@ -231,15 +240,15 @@ class SUMOEnv(MultiAgentEnv):
                 self._tick_yellow_phases()
 
                 try:
-                    traci.simulationStep()
+                    self.sumo.simulationStep()
                     self.time += 1
                     
                     # Check if simulation ended naturally
-                    if traci.simulation.getMinExpectedNumber() <= 0 and self.time > 100:
+                    if self.sumo.simulation.getMinExpectedNumber() <= 0 and self.time > 100:
                         print("Simulation ended: no more vehicles")
                         return self._get_terminal_state(done=True)
                         
-                except traci.exceptions.FatalTraCIError as e:
+                except self.sumo.exceptions.FatalTraCIError as e:
                     print(f"TraCI connection lost: {e}")
                     return self._get_terminal_state(done=True)
                 except Exception as e:
@@ -275,9 +284,9 @@ class SUMOEnv(MultiAgentEnv):
         """
         try:
             # Dynamically rewrite current 'G' or 'g' characters to 'y'.
-            current_state = traci.trafficlight.getRedYellowGreenState(tls)
+            current_state = self.sumo.trafficlight.getRedYellowGreenState(tls)
             yellow_state = current_state.replace('G', 'y').replace('g', 'y')
-            traci.trafficlight.setRedYellowGreenState(tls, yellow_state)
+            self.sumo.trafficlight.setRedYellowGreenState(tls, yellow_state)
 
             self._yellow_countdown[tls] = self.yellow_duration
             self._pending_phase[tls] = target_green_phase
@@ -286,7 +295,7 @@ class SUMOEnv(MultiAgentEnv):
             try:
                 logic = self.tls_definitions.get(tls)
                 target_state = logic.phases[target_green_phase].state
-                traci.trafficlight.setRedYellowGreenState(tls, target_state)
+                self.sumo.trafficlight.setRedYellowGreenState(tls, target_state)
                 self.current_phases[tls] = target_green_phase
             except Exception as inner_e:
                 # [SELF-HEALING CLAMP] 
@@ -313,7 +322,7 @@ class SUMOEnv(MultiAgentEnv):
                     try:
                         logic = self.tls_definitions.get(tls)
                         target_state = logic.phases[pending].state
-                        traci.trafficlight.setRedYellowGreenState(tls, target_state)
+                        self.sumo.trafficlight.setRedYellowGreenState(tls, target_state)
                         self.current_phases[tls] = pending
                     except Exception as e:
                         # Dummy light out-of-bounds catch silently in Python!
@@ -331,7 +340,7 @@ class SUMOEnv(MultiAgentEnv):
     def _get_vehicle_count(self):
         """Get current vehicle count safely"""
         try:
-            return traci.simulation.getMinExpectedNumber()
+            return self.sumo.simulation.getMinExpectedNumber()
         except:
             return 0
 
@@ -355,10 +364,10 @@ class SUMOEnv(MultiAgentEnv):
         }
         
         try:
-            veh_ids = traci.lane.getLastStepVehicleIDs(lane_id)
+            veh_ids = self.sumo.lane.getLastStepVehicleIDs(lane_id)
             total_pcu = 0
             for v_id in veh_ids:
-                v_type = traci.vehicle.getTypeID(v_id)
+                v_type = self.sumo.vehicle.getTypeID(v_id)
                 # Handle SUMO default type names or specific ones
                 factor = 1.0
                 for key, val in pcu_factors.items():
@@ -434,9 +443,9 @@ class SUMOEnv(MultiAgentEnv):
         Lower pressure (near zero) means the junction is balanced and efficient.
         """
         try:
-            incoming_lanes = traci.trafficlight.getControlledLanes(tls_id)
+            incoming_lanes = self.sumo.trafficlight.getControlledLanes(tls_id)
             # Find unique outgoing lanes (links)
-            links = traci.trafficlight.getControlledLinks(tls_id)
+            links = self.sumo.trafficlight.getControlledLinks(tls_id)
             outgoing_lanes = []
             for link in links:
                 for connection in link:
@@ -467,9 +476,9 @@ class SUMOEnv(MultiAgentEnv):
                 total_wait = 0
                 for tls in self.tls_ids:
                     try:
-                        lanes = traci.trafficlight.getControlledLanes(tls)
+                        lanes = self.sumo.trafficlight.getControlledLanes(tls)
                         for lane in lanes:
-                            total_wait += traci.lane.getWaitingTime(lane)
+                            total_wait += self.sumo.lane.getWaitingTime(lane)
                     except:
                         continue
                 
@@ -500,7 +509,7 @@ class SUMOEnv(MultiAgentEnv):
         array) so the agent knows what it's currently doing.
         """
         try:
-            lanes = traci.trafficlight.getControlledLanes(tls)
+            lanes = self.sumo.trafficlight.getControlledLanes(tls)
             # De-duplicate lanes (SUMO may list a lane multiple times for
             # different signal groups at the same intersection)
             unique_lanes = list(dict.fromkeys(lanes))  # preserves order
@@ -511,8 +520,8 @@ class SUMOEnv(MultiAgentEnv):
             for i in range(self.max_lanes):
                 if i < len(unique_lanes):
                     try:
-                        q_lengths.append(traci.lane.getLastStepHaltingNumber(unique_lanes[i]))
-                        avg_speeds.append(traci.lane.getLastStepMeanSpeed(unique_lanes[i]))
+                        q_lengths.append(self.sumo.lane.getLastStepHaltingNumber(unique_lanes[i]))
+                        avg_speeds.append(self.sumo.lane.getLastStepMeanSpeed(unique_lanes[i]))
                     except:
                         q_lengths.append(0)
                         avg_speeds.append(0)
@@ -522,7 +531,7 @@ class SUMOEnv(MultiAgentEnv):
 
             # Phase one-hot encoding
             try:
-                phase = traci.trafficlight.getPhase(tls)
+                phase = self.sumo.trafficlight.getPhase(tls)
             except:
                 phase = 0
                 
@@ -532,7 +541,7 @@ class SUMOEnv(MultiAgentEnv):
 
             # Time until next switch
             try:
-                elapsed = max(0, traci.trafficlight.getNextSwitch(tls) - traci.simulation.getTime())
+                elapsed = max(0, self.sumo.trafficlight.getNextSwitch(tls) - self.sumo.simulation.getTime())
             except:
                 elapsed = 0
 
@@ -543,12 +552,47 @@ class SUMOEnv(MultiAgentEnv):
             # Return zero features as fallback
             return [0] * (self.max_lanes + self.max_lanes + self.n_actions + 1)
 
+    def get_vehicle_telemetry(self):
+        """
+        [MECHANISM: VEHICLE TRACKING]
+        Extracts real-time physical coordinates for every vehicle in the simulation.
+        This data is sent to the frontend to render moving dots on the map.
+        """
+        try:
+            veh_ids = self.sumo.vehicle.getIDList()
+            telemetry = []
+            for v_id in veh_ids:
+                pos = self.sumo.vehicle.getPosition(v_id) # (x, y)
+                angle = self.sumo.vehicle.getAngle(v_id)
+                v_type = self.sumo.vehicle.getTypeID(v_id)
+                telemetry.append({
+                    "id": v_id,
+                    "x": round(pos[0], 2),
+                    "y": round(pos[1], 2),
+                    "phi": round(angle, 2),
+                    "type": v_type
+                })
+            return telemetry
+        except:
+            return []
+
+    def get_tls_states(self):
+        """Returns the current red-yellow-green state string for all traffic lights."""
+        states = {}
+        for tls in self.tls_ids:
+            try:
+                states[tls] = self.sumo.trafficlight.getRedYellowGreenState(tls)
+            except:
+                states[tls] = ""
+        return states
+
     def close(self):
         """Close the environment"""
         try:
-            if traci.isLoaded():
-                traci.close()
+            if self.sumo and self.sumo.isLoaded():
+                self.sumo.close()
         except Exception as e:
             print(f"Error closing SUMO: {e}")
         finally:
+            self.sumo = None
             self.is_initialized = False
