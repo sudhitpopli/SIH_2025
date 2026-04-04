@@ -1,0 +1,31 @@
+# Improved QMIX (v2) Configuration - Optimized for ~2-hour Training
+env: sumo
+
+env_args:
+  map_path: "maps/connaught_place.net.xml"
+  cfg_path: "maps/connaught_place.sumocfg"
+  step_length: 1.0
+  decision_interval: 5
+  episode_limit: 720
+  use_gui: False
+
+control_tls: True
+
+# Architecture: GRU + MaxPressure
+use_rnn: True
+reward_type: "max_pressure"
+
+# Hyperparameters
+rnn_hidden_dim: 64
+mixer_hidden_dim: 32
+lr: 0.0003
+gamma: 0.99
+buffer_size: 20000
+batch_size: 64
+n_episodes: 1500
+target_update_interval: 200
+print_interval: 10
+
+# Logging
+save_dir: "./models/v2"
+log_stats: True

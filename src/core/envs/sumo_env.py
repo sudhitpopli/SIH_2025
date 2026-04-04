@@ -1,7 +1,7 @@
 import os
 import traci
 import numpy as np
-from envs.multiagentenv import MultiAgentEnv
+from core.envs.multiagentenv import MultiAgentEnv
 
 class SUMOEnv(MultiAgentEnv):
     def __init__(self, args, control_tls=True):
@@ -180,6 +180,42 @@ class SUMOEnv(MultiAgentEnv):
         except:
             return 0
 
+    def get_pcu_count_on_lane(self, lane_id):
+        """
+        Calculate PCU-weighted vehicle count on a lane based on IRC:106-1990.
+        Factors:
+        - passenger (car): 1.0
+        - motorcycle: 0.5
+        - bus: 3.0
+        - truck: 3.0
+        - bicycle: 0.2
+        - default: 1.0
+        """
+        pcu_factors = {
+            "passenger": 1.0,
+            "motorcycle": 0.5,
+            "bus": 3.0,
+            "truck": 3.0,
+            "bicycle": 0.2
+        }
+        
+        try:
+            veh_ids = traci.lane.getLastStepVehicleIDs(lane_id)
+            total_pcu = 0
+            for v_id in veh_ids:
+                v_type = traci.vehicle.getTypeID(v_id)
+                # Handle SUMO default type names or specific ones
+                factor = 1.0
+                for key, val in pcu_factors.items():
+                    if key in v_type.lower():
+                        factor = val
+                        break
+                total_pcu += factor
+            return total_pcu
+        except Exception as e:
+            print(f"Error calculating PCU for lane {lane_id}: {e}")
+            return 0
+
     def get_obs(self):
         """Get observations for all agents"""
         obs = []
@@ -231,27 +267,55 @@ class SUMOEnv(MultiAgentEnv):
             "episode_limit": self.episode_limit
         }
 
-    def _compute_reward(self):
-        """Compute reward based on traffic performance"""
+    def _compute_max_pressure(self, tls_id):
+        """
+        Calculate the 'pressure' of a traffic light.
+        Pressure = Sum(Incoming Lane Occupancy) - Sum(Outgoing Lane Occupancy)
+        Lower pressure (near zero) means the junction is balanced and efficient.
+        """
         try:
-            # Total waiting time across all lanes
-            total_wait = 0
-            for tls in self.tls_ids:
-                try:
-                    lanes = traci.trafficlight.getControlledLanes(tls)
-                    for lane in lanes:
-                        total_wait += traci.lane.getWaitingTime(lane)
-                except:
-                    continue
+            incoming_lanes = traci.trafficlight.getControlledLanes(tls_id)
+            # Find unique outgoing lanes (links)
+            links = traci.trafficlight.getControlledLinks(tls_id)
+            outgoing_lanes = []
+            for link in links:
+                for connection in link:
+                    if connection[1] not in outgoing_lanes:
+                        outgoing_lanes.append(connection[1])
             
-            # Number of vehicles in the simulation
-            n_veh = max(1, self._get_vehicle_count())
+            # Use PCU-weighted counts for more accurate pressure
+            in_flow = sum([self.get_pcu_count_on_lane(l) for l in incoming_lanes])
+            out_flow = sum([self.get_pcu_count_on_lane(l) for l in outgoing_lanes])
             
-            # Normalize: per vehicle, clipped to avoid extreme values
-            reward = -(total_wait / n_veh)
-            reward = np.clip(reward, -10, 0)  # keep in range [-10, 0]
+            # Pressure is the net accumulation
+            return abs(in_flow - out_flow)
+        except:
+            return 0
+
+    def _compute_reward(self):
+        """Compute reward based on traffic performance (Wait Time or MaxPressure)"""
+        reward_type = getattr(self.args, "reward_type", "wait_time")
+        
+        try:
+            if reward_type == "max_pressure":
+                total_pressure = sum([self._compute_max_pressure(tls) for tls in self.tls_ids])
+                # We want to MINIMIZE pressure, so reward is negative
+                reward = -total_pressure / max(1, self.n_agents)
+                return np.clip(reward, -20, 0)
             
-            return reward
+            else: # Default: wait_time
+                total_wait = 0
+                for tls in self.tls_ids:
+                    try:
+                        lanes = traci.trafficlight.getControlledLanes(tls)
+                        for lane in lanes:
+                            total_wait += traci.lane.getWaitingTime(lane)
+                    except:
+                        continue
+                
+                n_veh = max(1, self._get_vehicle_count())
+                reward = -(total_wait / n_veh)
+                return np.clip(reward, -10, 0)
             
         except Exception as e:
             print(f"Error computing reward: {e}")
