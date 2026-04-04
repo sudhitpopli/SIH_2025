@@ -4,7 +4,7 @@ import torch.optim as optim
 import numpy as np
 from collections import deque
 import random
-from replay_buffer import ReplayBuffer
+from utils.replay_buffer import ReplayBuffer  # Updated import path
 from algorithms.qmix_net import AgentQNetwork, MixingNetwork
 
 

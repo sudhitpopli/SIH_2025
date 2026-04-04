@@ -1,6 +1,6 @@
 import os
 from types import SimpleNamespace
-from envs.sumo_env import SUMOEnv
+from src.envs.sumo_env import SUMOEnv  # Updated import path
 import time
 import traci
 
