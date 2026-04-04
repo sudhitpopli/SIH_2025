@@ -8,6 +8,7 @@ env_args:
   decision_interval: 5
   episode_limit: 720
   use_gui: False
+  max_lanes: 8
 
 # In native mode, we don't control the traffic lights
 control_tls: False

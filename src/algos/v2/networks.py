@@ -4,8 +4,11 @@ import torch.nn.functional as F
 
 class RNNAgent(nn.Module):
     """
-    Recurrent Agent Network for QMIX v2.
-    Adds memory (GRU) to handle partial observability in traffic flows.
+    [MECHANISM: THE LOCAL BRAIN (GRU)]
+    Every physical traffic light gets a copy of this brain.
+    Traffic is "Partially Observable"—a light can only see its own cars, not the cars 3 miles away.
+    By using a GRU (Gated Recurrent Unit), the brain has a "Memory". If it saw a huge wave of cars 
+    pass through 1 minute ago, it Remembers that wave and anticipates its arrival at the next light.
     """
     def __init__(self, input_dim, hidden_dim, n_actions):
         super(RNNAgent, self).__init__()
@@ -29,8 +32,13 @@ class RNNAgent(nn.Module):
 
 class MixingNetworkV2(nn.Module):
     """
-    Centralized Mixer with Hypernetworks. 
-    Enforces monotonicity via non-negative weights generated from the global state.
+    [MECHANISM: THE GLOBAL HYPERNETWORK (QMIX)]
+    If every traffic light acts selfishly (optimizing only its own cars), gridlocks form globally.
+    This 'Mixing' network acts as a God-View. It looks at the Global State (all cars everywhere)
+    and combines the individual choices of all lights into a single `Q_total` score.
+    
+    It enforces "Monotonicity" using Absolute Values (`torch.abs`): An action that is good for a 
+    local light must strictly increase the global score. This prevents lights from fighting each other.
     """
     def __init__(self, n_agents, state_dim, mixing_hidden_dim=32):
         super(MixingNetworkV2, self).__init__()

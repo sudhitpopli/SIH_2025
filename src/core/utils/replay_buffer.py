@@ -4,6 +4,16 @@ import numpy as np
 import torch
 
 class ReplayBuffer:
+    """
+    [MECHANISM: MARKOV MEMORY BANK (LEGACY)]
+    This is the standard memory buffer for the Legacy QMIX architecture. 
+    Unlike the V2 buffer which saves whole waves of chronological traffic, this buffer
+    treats every single 5-second interval as an entirely independent, disjointed memory.
+    
+    The AI learns by reaching into this bag, pulling out 32 totally random, completely 
+    unrelated traffic moments (e.g. one from minute 3, one from minute 12), and
+    trying to optimize the math for each isolated moment.
+    """
     def __init__(self, capacity, obs_dim, state_dim, n_agents, n_actions, device="cpu"):
         self.capacity = capacity
         self.device = device

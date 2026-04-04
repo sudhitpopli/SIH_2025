@@ -2,9 +2,15 @@ import random
 
 class MultiAgentEnv:
     """
-    Base class for Multi-Agent Environments.
-    Provides a common interface and default helpers.
-    Child classes (like SUMOEnv) should override reset() and step().
+    [MECHANISM: THE BLUEPRINT (ABSTRACT BASE CLASS)]
+    This file is completely conceptual. It is a "Blueprint" (Abstract Base Class) for Reinforcement Learning.
+    
+    Before we can create a complex Traffic Simulation, PyTorch needs a guarantee that the environment 
+    will have standardized buttons: `reset()` (to reboot), `step()` (to advance physics), and 
+    `sample_actions()` (to guess blindly). 
+    
+    `sumo_env.py` inherits this blueprint so PyTorch knows exactly how to talk to SUMO without 
+    needing to know how SUMO actually works.
     """
 
     def __init__(self, n_agents=1, action_space=None, obs_space=None):

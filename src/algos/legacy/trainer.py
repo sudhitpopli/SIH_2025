@@ -72,7 +72,7 @@ class QMIXTrainer:
         agent_qs = []
         for i in range(self.n_agents):
             q_values = self.agent_q(obs[:, i, :])
-            q_selected = q_values.gather(1, actions[:, i].unsqueeze(1)).squeeze(1)
+            q_selected = q_values.gather(1, actions[:, i].long().unsqueeze(1)).squeeze(1)
             agent_qs.append(q_selected)
         agent_qs = torch.stack(agent_qs, dim=1)
 

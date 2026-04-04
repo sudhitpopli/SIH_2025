@@ -8,6 +8,8 @@ env_args:
   decision_interval: 5
   episode_limit: 720
   use_gui: False
+  max_lanes: 8
+  yellow_duration: 3
 
 control_tls: True
 

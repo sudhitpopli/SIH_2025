@@ -1,4 +1,4 @@
-# Indian Standard Road Placeholder Configuration
+# Indian Standard Road Configuration
 env: sumo
 
 env_args:
@@ -8,7 +8,9 @@ env_args:
   decision_interval: 5
   episode_limit: 720
   use_gui: False
+  max_lanes: 8
+  yellow_duration: 3
 
 model_description: "Standard model based on Indian IRC guidelines for signal control."
 traffic_behavior: "Non-lane-based movement, diverse vehicle types."
-notes: "Currently a placeholder for printing simulation stats."
+notes: "Uses Webster's Method (IRC:93-1985) for optimum cycle time calculation."

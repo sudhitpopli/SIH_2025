@@ -46,17 +46,22 @@ class WebsterController:
         self.timer += 1
         
         # 1. Collect real-time PCU flow data
+        pcu_sum = 0
         for lane in self.lane_flows.keys():
             current_pcu = self.env.get_pcu_count_on_lane(lane)
             self.lane_flows[lane].append(current_pcu)
+            pcu_sum += current_pcu
         
         # 2. Re-calculate and Apply Webster's Method
-        if self.timer >= self.update_interval:
+        # Force update at step 10 to clear native defaults, then every update_interval
+        if self.timer == 10 or self.timer >= self.update_interval:
+            print(f"[FLOW_LOG] {self.tls_id} | Step {self.timer} | Detected PCU Sum: {pcu_sum:.2f}")
             self._optimize_timings()
-            self.timer = 0
-            # Reset buffers
-            for lane in self.lane_flows.keys():
-                self.lane_flows[lane] = []
+            if self.timer >= self.update_interval:
+                self.timer = 0
+                # Reset buffers
+                for lane in self.lane_flows.keys():
+                    self.lane_flows[lane] = []
 
     def _optimize_timings(self):
         """Map flows to phases and calculate optimal Webster splits."""

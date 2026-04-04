@@ -34,7 +34,7 @@ def run_native(args, task="eval"):
         total_wait += info.get("total_wait", 0) # Assumes env might provide this
         steps += 1
     
-    avg_reward = total_reward / steps
+    avg_reward = total_reward / max(1, steps)
     print(f"[RESULT] Native Finished. Avg Reward: {avg_reward:.2f}")
     env.close()
     return {"avg_reward": avg_reward, "total_steps": steps}
@@ -58,7 +58,7 @@ def run_indian(args, task="eval"):
         total_reward += reward
         steps += 1
         
-    avg_reward = total_reward / steps
+    avg_reward = total_reward / max(1, steps)
     print(f"[RESULT] Indian Standard Finished. Avg Reward: {avg_reward:.2f}")
     env.close()
     return {"avg_reward": avg_reward, "total_steps": steps}
@@ -111,7 +111,7 @@ def run_legacy(args, task="train"):
             ep_reward += reward
             step += 1
             
-        avg_ep_reward = ep_reward / step
+        avg_ep_reward = ep_reward / max(1, step)
         if task == "train":
             print(f"Episode {ep+1}/{n_episodes} | Avg Reward: {avg_ep_reward:.2f} | Epsilon: {trainer.epsilon:.2f}")
             if avg_ep_reward > best_reward:
@@ -124,6 +124,13 @@ def run_legacy(args, task="train"):
     return {"avg_reward": avg_ep_reward if task == "eval" else best_reward}
 
 def run_v2(args, task="train"):
+    """
+    [MECHANISM: MULTI-AGENT TRAINING PIPELINE]
+    This function handles the overarching loop connecting the SUMO environment to the Neural Network.
+    - `env.step()` advances the physical traffic cars.
+    - `trainer.store_transition()` saves the snapshot of what happened.
+    - `trainer.train_step()` runs calculus (Backpropagation) to improve the AI's future choices.
+    """
     print(f"\n[MODE] Running Improved QMIX V2 (Task: {task})...")
     from core.envs.sumo_env import SUMOEnv
     from algos.v2.trainer import QMIXTrainerV2
@@ -132,13 +139,21 @@ def run_v2(args, task="train"):
     print(f"[INFO] Using device: {device}")
     
     env = SUMOEnv(args)
+
+    # Episode buffer capacity and chunk length
+    ep_buffer_size = getattr(args, 'ep_buffer_size', 500)
+    chunk_len = getattr(args, 'chunk_len', 50)
+
     trainer = QMIXTrainerV2(
         env=env, n_agents=env.n_agents, state_dim=env.get_state_size(),
         obs_dim=env.obs_size, n_actions=env.n_actions,
         rnn_hidden_dim=args.rnn_hidden_dim, mixing_hidden_dim=args.mixer_hidden_dim,
         lr=args.lr, gamma=args.gamma,
-        buffer_size=args.buffer_size, batch_size=args.batch_size,
-        device=device
+        buffer_size=ep_buffer_size, batch_size=args.batch_size,
+        chunk_len=chunk_len, device=device,
+        epsilon_start=getattr(args, 'epsilon_start', 1.0),
+        epsilon_min=getattr(args, 'epsilon_min', 0.05),
+        epsilon_decay=getattr(args, 'epsilon_decay', 0.995)
     )
 
     model_path = os.path.join(args.save_dir, "v2_model.pt")
@@ -160,23 +175,58 @@ def run_v2(args, task="train"):
         step = 0
         
         while not done:
+            # 1. Neural Network evaluates current traffic (Queue depth, speeds) and picks phase
             actions, h = trainer.select_action(obs, h)
+
+            # 2. SUMO Physics Engine executes the phase (accounting for 3-sec yellow delays) 
+            # and returns the new traffic state 5 seconds later
             next_state, next_obs, reward, done, _ = env.step(actions)
             
             if task == "train":
-                trainer.replay_buffer.store(obs, state, actions, reward, next_obs, next_state, done)
-                loss = trainer.train_step()
-                if step % args.target_update_interval == 0:
-                    trainer.update_target_networks()
+                # [MECHANISM: CONTINUOUS EXPERIENCE REPLAY]
+                # In RL, an AI learns by re-watching its past "memories" (Replay Buffer).
+                # Because we use a GRU (a type of RNN with memory), we MUST store memories 
+                # exactly in the chronological order they happened, so the AI can learn temporal
+                # wave causality (e.g. "I turned it green, and 20 seconds later the queue cleared").
+                trainer.store_transition(obs, state, actions, reward,
+                                         next_obs, next_state, done)
             
             obs, state = next_obs, next_state
             ep_reward += reward
             step += 1
             
-        avg_ep_reward = ep_reward / step
+        avg_ep_reward = ep_reward / max(1, step)
+
         if task == "train":
+            # [CRITICAL FIX: TRUNCATED BPTT BATCHING]
+            # Once the 720-step episode is done, we flush the exact historical trajectory
+            # into the Replay Buffer. 
+            trainer.flush_episode()
+
+            # [MECHANISM: EPISODE BATCH TRAINING (BPTT)]
+            # PyTorch learns best when it looks at massive batches of data at once (parallelism).
+            # Instead of stopping the simulation to train after every single second, we wait until
+            # an entire 720-step episode finishes. Then, the computer pauses SUMO, grabs 10 massive 
+            # random historical chunks of traffic, and optimizes the neural architecture all at once.
+            # This is called Truncated Backpropagation Through Time.
+            updates_per_episode = getattr(args, 'updates_per_episode', 10)
+            loss = 0
+            for _ in range(updates_per_episode):
+                step_loss = trainer.train_step()
+                if step_loss is not None and step_loss > 0:
+                    loss = step_loss
+
+            # [MECHANISM: DOUBLE Q-LEARNING (TARGET NETWORK)]
+            # If the AI uses its own active brain to score its own actions, it becomes delusional
+            # and wildly overestimates how "good" a traffic state is. We keep a 2nd "frozen" copy 
+            # of the brain (`target_network`) to objectively score the state. Every N episodes, 
+            # we copy the active brain into the frozen brain to update its understanding.
+            if (ep + 1) % args.target_update_interval == 0:
+                trainer.update_target_networks()
+
             if (ep + 1) % args.print_interval == 0:
-                print(f"Episode {ep+1}/{n_episodes} | Avg Reward: {avg_ep_reward:.2f} | Epsilon: {trainer.epsilon:.2f}")
+                print(f"Episode {ep+1}/{n_episodes} | Avg Reward: {avg_ep_reward:.2f} "
+                      f"| Epsilon: {trainer.epsilon:.2f} | Loss: {float(loss):.4f}")
             if avg_ep_reward > best_reward:
                 best_reward = avg_ep_reward
                 trainer.save_model(model_path)
