@@ -59,8 +59,15 @@ class SUMOEnv(MultiAgentEnv):
         """Start SUMO simulation with proper error handling and labeling for multi-instance support."""
         # Clean up existing labeling if this is a restart
         try:
-            if self.sumo:
-                self.sumo.close()
+            conn = traci.getConnection(self.label)
+            conn.close()
+        except:
+            pass
+        
+        try:
+            # Also clean up standard traci if somehow left hanging
+            if self.label == "default" and traci.isLoaded():
+                traci.close()
         except:
             pass
         
@@ -77,10 +84,11 @@ class SUMOEnv(MultiAgentEnv):
         
         try:
             # [MECHANISM: MULTI-INSTANCE TRACI]
-            # To run 2 simulations side-by-side, we must specify a unique Port and Label.
-            # traci.start returns a 'Connection' object which acts as our private tunnel 
-            # to this specific SUMO instance. 
-            self.sumo = traci.start(sumo_cmd, port=self.port, label=self.label)
+            # traci.start() begins the C++ binary.
+            # traci.getConnection() gives us the Object-Oriented tunnel to interact with it,
+            # allowing us to run two isolated environments without them colliding.
+            traci.start(sumo_cmd, port=self.port, label=self.label)
+            self.sumo = traci.getConnection(self.label)
         except Exception as e:
             print(f"Error starting SUMO (Port {self.port}, Label {self.label}): {e}")
             raise
@@ -177,7 +185,7 @@ class SUMOEnv(MultiAgentEnv):
 
         # Always close and restart — no backwards stepping!
         try:
-            if self.sumo.isLoaded():
+            if self.sumo:
                 self.sumo.close()
         except:
             pass
@@ -209,8 +217,8 @@ class SUMOEnv(MultiAgentEnv):
     def step(self, actions):
         """Advances the simulation by 5 seconds, enacting PyTorch actions and mapping physics."""
         try:
-            # Check if simulation is still running
-            if not self.sumo.isLoaded():
+            # Check if connection exists
+            if not self.sumo:
                 return self._get_terminal_state()
             
             if self.control_tls and actions is not None and self.tls_ids:
@@ -248,7 +256,7 @@ class SUMOEnv(MultiAgentEnv):
                         print("Simulation ended: no more vehicles")
                         return self._get_terminal_state(done=True)
                         
-                except self.sumo.exceptions.FatalTraCIError as e:
+                except traci.exceptions.FatalTraCIError as e:
                     print(f"TraCI connection lost: {e}")
                     return self._get_terminal_state(done=True)
                 except Exception as e:
@@ -589,7 +597,7 @@ class SUMOEnv(MultiAgentEnv):
     def close(self):
         """Close the environment"""
         try:
-            if self.sumo and self.sumo.isLoaded():
+            if self.sumo:
                 self.sumo.close()
         except Exception as e:
             print(f"Error closing SUMO: {e}")

@@ -1,0 +1,12 @@
+# This file is used internally by FFMPEG.
+file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/CurveFit/3544663784_1760011064_223132457.mp4'
+file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/CurveFit/260329756_2228222498_1906528375.mp4'
+file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/CurveFit/260329756_4086786480_1771476992.mp4'
+file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/CurveFit/260329756_707570996_1771476992.mp4'
+file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/CurveFit/260329756_541452021_1906528375.mp4'
+file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/CurveFit/260329756_3144312486_1771476992.mp4'
+file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/CurveFit/260329756_518498583_1771476992.mp4'
+file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/CurveFit/260329756_3792850750_1771476992.mp4'
+file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/CurveFit/260329756_2119069378_1771476992.mp4'
+file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/CurveFit/260329756_1470720661_1771476992.mp4'
+file 'file:C:/Users/Sudhit/Documents/Study Material/SIH/media/videos/manim_script/1080p60/partial_movie_files/CurveFit/260329756_1432596116_2326408374.mp4'

@@ -2,6 +2,7 @@ import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
+import xml.etree.ElementTree as ET
 from .dual_runner import DualSimRunner
 
 app = FastAPI(title="SIH 2025 Traffic Telemetry API")
@@ -18,6 +19,26 @@ app.add_middleware(
 @app.get("/")
 async def root():
     return {"message": "Traffic Telemetry API is online"}
+
+@app.get("/api/map")
+async def get_map():
+    """Extracts raw polygon nodes from SUMO for absolute frontend Map accuracy"""
+    net_file = "maps/connaught_place.net.xml"
+    if not os.path.exists(net_file):
+        return {"roads": []}
+    
+    tree = ET.parse(net_file)
+    root = tree.getroot()
+    roads = []
+    
+    for edge in root.findall('edge'):
+        for lane in edge.findall('lane'):
+            shape_str = lane.get('shape')
+            if shape_str:
+                points = [[float(p.split(',')[0]), float(p.split(',')[1])] for p in shape_str.split(' ')]
+                roads.append(points)
+    
+    return {"roads": roads}
 
 @app.websocket("/ws/telemetry")
 async def telemetry_stream(websocket: WebSocket):
@@ -48,6 +69,8 @@ async def telemetry_stream(websocket: WebSocket):
             except asyncio.TimeoutError:
                 # No new command, just continue to simulation step
                 pass
+            except (WebSocketDisconnect, RuntimeError):
+                break # the backend or frontend cleanly severed the socket 
             except Exception as e:
                 print(f"[API] Error parsing command: {e}")
             
@@ -57,8 +80,8 @@ async def telemetry_stream(websocket: WebSocket):
                 if telemetry:
                     await websocket.send_json(telemetry)
                 
-                # Control the framerate for smooth visualization (10 FPS)
-                await asyncio.sleep(0.1)
+                # Control the framerate for smooth visualization (~25 FPS)
+                await asyncio.sleep(0.04)
             else:
                 # Idle loop to prevent constant CPU spinning
                 await asyncio.sleep(0.5)

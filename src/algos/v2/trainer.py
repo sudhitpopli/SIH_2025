@@ -267,9 +267,13 @@ class QMIXTrainerV2:
             print(f"[ERROR] No model found at {path}")
             return False
         checkpoint = torch.load(path, map_location=self.device)
-        self.agent.load_state_dict(checkpoint['agent'])
-        self.mixer.load_state_dict(checkpoint['mixer'])
-        self.optimizer.load_state_dict(checkpoint['optimizer'])
-        self.epsilon = checkpoint.get('epsilon', self.epsilon_min)
-        print(f"[INFO] V2 Model loaded from {path}")
-        return True
+        try:
+            self.agent.load_state_dict(checkpoint['agent'])
+            self.mixer.load_state_dict(checkpoint['mixer'])
+            self.optimizer.load_state_dict(checkpoint['optimizer'])
+            self.epsilon = checkpoint.get('epsilon', self.epsilon_min)
+            print(f"[INFO] V2 Model loaded from {path}")
+            return True
+        except RuntimeError as e:
+            print(f"[WARN] Architecture mismatch in {path} (Did the map change?). Ignoring saved weights.")
+            return False

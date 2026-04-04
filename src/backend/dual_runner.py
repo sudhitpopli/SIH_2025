@@ -50,14 +50,24 @@ class DualSimRunner:
             print(f"[DUAL-SIM] Loading trained model from {self.v2_model_path}")
             checkpoint = torch.load(self.v2_model_path, map_location=self.device)
             # Load state dict (handle potential 'agent.' prefix if saved from trainer)
-            if "agent_state_dict" in checkpoint:
-                self.v2_agent.load_state_dict(checkpoint["agent_state_dict"])
-            else:
-                self.v2_agent.load_state_dict(checkpoint)
+            try:
+                if "agent" in checkpoint:
+                    self.v2_agent.load_state_dict(checkpoint["agent"])
+                elif "agent_state_dict" in checkpoint:
+                    self.v2_agent.load_state_dict(checkpoint["agent_state_dict"])
+                else:
+                    self.v2_agent.load_state_dict(checkpoint)
+            except RuntimeError as e:
+                print(f"[WARN] Architecture mismatch (Did the map change?). Using random AI weights.")
         else:
             print("[WARN] No trained model found! Using random initialization for V2.")
 
         self.v2_agent.eval()
+        
+        # Reset engines to initialize clocks and base observations
+        self.v2_env.reset()
+        self.native_env.reset()
+        
         self.is_running = True
         print("[DUAL-SIM] Both simulations ready.")
 
@@ -75,16 +85,17 @@ class DualSimRunner:
         
         # [MECHANISM: AI INFERENCE]
         obs = self.v2_env.get_obs() # List of np.arrays
-        obs_tensor = torch.FloatTensor(obs).to(self.device).reshape(1, self.v2_env.n_agents, -1)
+        import numpy as np
+        obs_tensor = torch.tensor(np.array(obs), dtype=torch.float32).to(self.device)
         
-        # Re-init hidden state if it doesn't exist
+        # Re-init hidden state if it doesn't exist (expand to match n_agents)
         if self.hidden_state is None:
-            self.hidden_state = self.v2_agent.init_hidden().to(self.device)
+            self.hidden_state = self.v2_agent.init_hidden().expand(self.v2_env.n_agents, -1).clone().to(self.device)
 
         with torch.no_grad():
-            # Get Q-values and update hidden state (temporal memory)
+            # Get Q-values and update hidden state (temporal memory). Both are 2D arrays now.
             q_values, self.hidden_state = self.v2_agent(obs_tensor, self.hidden_state)
-            actions = q_values.max(dim=2)[1].cpu().numpy()[0]
+            actions = q_values.max(dim=1)[1].cpu().numpy()
 
         # 2. Advance Environments
         # Note: We step the physics by 1 second here for max visual smoothness
