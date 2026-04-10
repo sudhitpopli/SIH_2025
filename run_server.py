@@ -14,5 +14,9 @@ if __name__ == "__main__":
     print(f"[SYSTEM] Project Root: {project_root}")
     
     # Run the FastAPI app
+    # Render and other PaaS providers inject a $PORT environment variable
+    port = int(os.environ.get("PORT", 8000))
+    
     # Note: We use the string import so uvicorn can find the app correctly
-    uvicorn.run("backend.app:app", host="0.0.0.0", port=8000, reload=True)
+    # Reload is disabled for production stability
+    uvicorn.run("backend.app:app", host="0.0.0.0", port=port, reload=False)

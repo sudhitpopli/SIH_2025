@@ -1,0 +1,22 @@
+# Local environment
+venv/
+.env
+__pycache__/
+*.pyc
+
+# Frontend (Excluded as requested)
+src/frontend/
+node_modules/
+
+# Local data & logs
+logs/
+models/v2/*.pt
+!models/v2/latest.pt  # Keep latest model if desired, or exclude all
+*.log
+
+# Git
+.git/
+.gitignore
+
+# SUMO local UI configs
+maps/*.sumoguicfg
