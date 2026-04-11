@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 // --- Reusable Scroll Reveal Component ---
-const ScrollReveal = ({ children, delay = 0 }: { children: React.ReactNode, delay?: number }) => {
+const ScrollReveal = ({ children, delay = 0 }: { children: ReactNode, delay?: number }) => {
   const [isVisible, setIsVisible] = useState(false);
   const domRef = useRef<HTMLDivElement>(null);
 
