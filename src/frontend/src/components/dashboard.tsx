@@ -10,6 +10,7 @@ import Contact from './contact';
 
 import { useTrafficSocket } from '../hooks/useTrafficSocket';
 import SimulationMap from './SimulationMap';
+import { API_BASE_URL, WS_BASE_URL } from '../config';
 
 // Safe Error Boundary to prevent "White Screen of Death"
 class DashboardErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, errorSnippet: string}> {
@@ -81,7 +82,7 @@ export default function TrafficDashboard() {
   }, [activeTab]);
 
   // Use the real backend WebSocket hook
-  const { data, isConnected, isRunning, startSimulation, stopSimulation } = useTrafficSocket('ws://localhost:8000/ws/telemetry');
+  const { data, isConnected, isRunning, startSimulation, stopSimulation } = useTrafficSocket(WS_BASE_URL + '/ws/telemetry');
   
   // States for our charts and map
   const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesData[]>([]);
@@ -89,7 +90,7 @@ export default function TrafficDashboard() {
 
   // Fetch the real map layout once on boot
   useEffect(() => {
-    fetch('http://localhost:8000/api/map')
+    fetch(`${API_BASE_URL}/api/map`)
       .then(res => res.json())
       .then(d => {
          if (d.roads) setMapData(d.roads);
