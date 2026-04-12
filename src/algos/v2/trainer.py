@@ -77,7 +77,7 @@ class QMIXTrainerV2:
         # obs: [n_agents, obs_dim]
         # hidden_state: [1, n_agents, rnn_hidden_dim]
         
-        obs_tensor = torch.FloatTensor(obs).to(self.device) # [n_agents, obs_dim]
+        obs_tensor = torch.FloatTensor(np.array(obs)).to(self.device) # [n_agents, obs_dim]
         h_in = hidden_state.view(-1, self.rnn_hidden_dim) # [n_agents, rnn_hidden_dim]
         
         # Forward through RNN

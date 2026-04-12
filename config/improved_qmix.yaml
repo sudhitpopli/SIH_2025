@@ -28,7 +28,7 @@ ep_buffer_size: 300             # Max episodes in replay (300 * 720 steps = plen
 chunk_len: 72                   # ~720/10 = 72 decision points per episode (full coverage)
 n_episodes: 2000                # More episodes for complex topology
 target_update_interval: 5       # Frequent target updates for stability
-print_interval: 10
+print_interval: 1
 
 # Exploration — slower decay for complex action space
 epsilon_start: 1.0
