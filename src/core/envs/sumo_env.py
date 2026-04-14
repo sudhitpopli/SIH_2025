@@ -38,6 +38,9 @@ class SUMOEnv(MultiAgentEnv):
         self.current_phases = {}       # tls_id -> current green phase index
         self._yellow_countdown = {}    # tls_id -> remaining yellow steps (0 = not in yellow)
         self._pending_phase = {}       # tls_id -> phase to switch to after yellow completes
+        self.neighbor_map = {}         # tls_id -> list of adjacent tls_ids
+        self.yellow_duration = 3       # Fixed 3-step yellow before switching green phase
+        self._debug_printed = False    # Guard: only print startup banner once
 
         # ---- obs_size consistency guard ----
         # If the RL environment resets and TraCI initializes a slightly different state matrix, 
@@ -162,6 +165,29 @@ class SUMOEnv(MultiAgentEnv):
                     self.current_phases[tls] = 0
                 self._yellow_countdown[tls] = 0
                 self._pending_phase[tls] = None
+            
+            # [DIAGNOSTIC] Only print verbose startup info on the very first init
+            if not self._debug_printed:
+                num_edges = len(self.sumo.edge.getIDList())
+                num_lanes = len(self.sumo.lane.getIDList())
+                print(f"\n" + "="*55)
+                print(f" [SUMO] ENVIRONMENT INITIALIZED")
+                print(f" - Map:            {os.path.basename(self.net_file)}")
+                print(f" - Traffic Lights: {self.n_agents}")
+                print(f" - Roads/Edges:    {num_edges}")
+                print(f" - Lane Count:     {num_lanes}")
+                print(f" - Max Phases:     {self.n_actions}")
+                print(f" - Obs Vector:     {self.obs_size} units")
+                print(f" - State Vector:   {self.state_size} units")
+                print("="*55 + "\n")
+
+            # [NEW] Topology Discovery for v4.0 (only needed on first init)
+            if not self._debug_printed:
+                self._get_neighbor_map()
+                self._debug_printed = True
+            else:
+                # On reset, re-use the existing neighbor map — no need to re-discover
+                pass
             
         except Exception as e:
             print(f"Error initializing environment info: {e}")
@@ -339,6 +365,50 @@ class SUMOEnv(MultiAgentEnv):
                         self._permanent_clamps[tls] = 1
                     self._pending_phase[tls] = None
 
+    def _get_neighbor_map(self, radius=400):
+        """
+        [MECHANISM: SPATIAL TOPOLOGY DISCOVERY - DISTANCE BASED]
+        Identifies traffic lights within a physical radius to act as neighbors.
+        Distance-based discovery is more robust than edge-tracing for complex, 
+        hand-mapped, or messy OSM topologies like Connaught Place.
+        """
+        self.neighbor_map = {tls: [] for tls in self.tls_ids}
+        if not self.sumo or not self.tls_ids:
+            return
+
+        import math
+        # Get all positions once to avoid repeated TraCI calls
+        positions = {tls: self.sumo.junction.getPosition(tls) for tls in self.tls_ids}
+        
+        total_neighbors = 0
+        for t1 in self.tls_ids:
+            p1 = positions[t1]
+            for t2 in self.tls_ids:
+                if t1 == t2: continue
+                
+                p2 = positions[t2]
+                dist = math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+                
+                if dist <= radius:
+                    if t2 not in self.neighbor_map[t1]:
+                        self.neighbor_map[t1].append(t2)
+            
+            total_neighbors += len(self.neighbor_map[t1])
+        
+        # [DIAGNOSTIC] Topology Summary
+        isolated_nodes = [t for t, n in self.neighbor_map.items() if len(n) == 0]
+        avg_neighbors = total_neighbors / max(1, self.n_agents)
+        
+        print(f" [TOPOLOGY DEBUG] SPATIAL RADIUS DISCOVERY COMPLETE")
+        print(f" - Search Radius:     {radius}m")
+        print(f" - Total Adjacencies:  {total_neighbors}")
+        print(f" - Avg Neighbors/TLS:  {avg_neighbors:.2f}")
+        if isolated_nodes:
+            print(f" - Isolated Nodes ({len(isolated_nodes)}): {isolated_nodes[:3]}...")
+        else:
+            print(f" - All nodes successfully connected.")
+        print("="*55 + "\n")
+                
     def _get_terminal_state(self, done=True):
         """Return terminal state when simulation ends or errors occur"""
         empty_obs = [np.zeros(self.obs_size) for _ in range(self.n_agents)]

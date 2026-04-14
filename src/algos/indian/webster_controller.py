@@ -5,11 +5,17 @@ class WebsterController:
     """
     Implements Indian native traffic signal control based on IRC:93-1985 guidelines.
     Uses Webster's Method for optimum cycle time calculation across any junction structure.
+    
+    Standards Applied:
+    - [IRC:93-1985]: Guidelines for Traffic Signal Design (optimum cycle and green splits).
+    - [IRC:106-1990]: Guidelines for Capacity of Urban Roads (PCU factors).
     """
-    def __init__(self, env, tls_id, update_interval=120):
+    def __init__(self, env, tls_id, update_interval=120, is_static=True):
         self.env = env
         self.tls_id = tls_id
-        self.update_interval = update_interval  # Shorter interval for adaptation
+        self.update_interval = update_interval  
+        self.is_static = is_static
+        self.locked = False
         self.timer = 0
         
         # IRC Constants (IRC:106-1990)
@@ -40,26 +46,29 @@ class WebsterController:
                     for lane in self.phase_lane_map[i]:
                         if lane not in self.lane_flows:
                             self.lane_flows[lane] = []
-
+    
     def step(self):
         """Collect data and periodically update signal timings."""
+        if self.locked:
+            return
+
         self.timer += 1
         
-        # 1. Collect real-time PCU flow data
-        pcu_sum = 0
+        # 1. Collect flow data (Emulating a design-flow survey)
         for lane in self.lane_flows.keys():
             current_pcu = self.env.get_pcu_count_on_lane(lane)
             self.lane_flows[lane].append(current_pcu)
-            pcu_sum += current_pcu
         
         # 2. Re-calculate and Apply Webster's Method
-        # Force update at step 10 to clear native defaults, then every update_interval
-        if self.timer == 10 or self.timer >= self.update_interval:
-            print(f"[FLOW_LOG] {self.tls_id} | Step {self.timer} | Detected PCU Sum: {pcu_sum:.2f}")
+        if self.timer >= self.update_interval:
             self._optimize_timings()
-            if self.timer >= self.update_interval:
+            
+            if self.is_static:
+                self.locked = True
+                print(f" [IRC:93-1985] {self.tls_id} | Signal Timings LOCKED (Fixed-Time Mode)")
+            else:
                 self.timer = 0
-                # Reset buffers
+                # Reset buffers for next adaptation window
                 for lane in self.lane_flows.keys():
                     self.lane_flows[lane] = []
 

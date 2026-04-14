@@ -1,0 +1,44 @@
+# SIH 2025 - v4.0 Ultimate Spatial QMIX configuration
+# This model uses Gated Recurrent Communication (GRC) and Neighborhood topology.
+
+mode: "v4.0"
+n_agents: 12
+state_dim: 156 # 12 agents * 13 features
+obs_size: 13
+n_actions: 8 # Max phases in Connaught Place
+
+# Architecture
+rnn_hidden_dim: 256
+mixer_hidden_dim: 128
+num_layers: 2
+use_grc: true
+
+# Training
+n_episodes: 500
+lr: 0.0001
+gamma: 0.99
+batch_size: 32
+chunk_len: 50
+ep_buffer_size: 1000
+target_update_interval: 100
+updates_per_episode: 5
+
+# Exploration
+epsilon_start: 1.0
+epsilon_min: 0.05
+epsilon_decay: 0.992
+
+# Intervals
+print_interval: 1
+save_interval: 10
+save_dir: "./models/v4"
+
+# Environment
+env_args:
+  map_path: "./maps/connaught_place.net.xml"
+  cfg_path: "./maps/connaught_place.sumocfg"
+  use_gui: false
+  step_length: 1.0
+  decision_interval: 5
+  max_lanes: 8
+  episode_limit: 720
